@@ -1,5 +1,4 @@
 # Related Papers
-----
 - [Chargrid: Towards Understanding 2D Documents](https://arxiv.org/abs/1809.08799) (Katti et al. in SAP, EMNLP 2018)
 
 - [BERTgrid: Contextualized Embedding for 2D Document Representation and Understanding](https://arxiv.org/abs/1909.04948) (Denk & Reisswig in SAP, Neurips 2019 Document Intelligence Workshop Best Paper)
