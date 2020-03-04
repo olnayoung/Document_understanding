@@ -18,3 +18,5 @@
 - [Learning to Extract Semantic Structure from Documents Using Multimodal Fully Convolutional Neural Networks](https://arxiv.org/abs/1706.02337) (Yang et al. in The Penn State Univ & Adobe, CVPR 2017 Spotlight)
 
 - [CUTIE: Learning to Understand Documents with Convolutional Universal Text Information Extractor](https://arxiv.org/abs/1903.12363) (Zhao et al. arxiv 2019)
+
+- [CloudScan - A Configuration-Free Invoice Analysis System Using Recurrent Neural Networks](https://ieeexplore.ieee.org/abstract/document/8270005) (Rasmus Berg Palm et al. in Technical University of Denmark, IAPR 2017)
