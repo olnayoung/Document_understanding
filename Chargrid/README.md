@@ -10,9 +10,9 @@
 
 <img src="/Chargrid/images/chargrid_network.PNG" width="800" align="center">
 
-<img src="/Chargrid/images/chargrid_spartial_distribution.PNG" width="800" align="center">
+<img src="/Chargrid/images/chargrid_spartial_distribution.PNG" width="400" align="center">
 
-<img src="/Chargrid/images/chargrid_results.PNG" width="800" align="center">
+<img src="/Chargrid/images/chargrid_results.PNG" width="400" align="center">
 
 
 
