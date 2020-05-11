@@ -12,13 +12,16 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from BERTgridNet import NetForBertgrid
 
 
-class TrainOrTest():
+class trainNtest():
     def __init__(self, lossname):
         self.class_num = args.class_num
         self.batch_size = args.batch_num
         self.n_epoch = args.n_epoch
+
         self.input_path = args.input_path
         self.label_path = args.label_path
+        self.test_path = args.test_path
+
         self.l_r = args.l_r
         self.model = NetForBertgrid(768, self.class_num)
 
@@ -77,7 +80,7 @@ class TrainOrTest():
     
     def calcul_accuracy(self, pred, ans):
         pred = torch.argmax(pred, dim=1)
-        answer = answer.squeeze(1)
+        answer = ans.squeeze(1)
 
         correct = (pred == answer).float()
         a, b, c = answer.size()
@@ -178,6 +181,7 @@ class TrainOrTest():
 
             start_time = time.time()
             train_loss, train_acc, train_mic, train_mac = self.train_epoch(input_lists)
+            val_loss, val_acc, val_mic, val_mac = self.val_epoch(input_lists)
             end_time = time.time()
 
             mins, secs = self.epoch_time(start_time, end_time)
@@ -185,10 +189,27 @@ class TrainOrTest():
             print('--------------------------------------------------------------')
             print('Epoch: %02d | Epoch Time: %dm %ds' % (epoch+1, mins, secs))
             print('\tTrain Loss: %.3f | Train Acc: %.2f%% | mic: %.2f%% | mac: %.2f%%' % (train_loss, train_acc*100, train_mic*100, train_mac*100))
+            print('\tVal Loss: %.3f | Val Acc: %.2f%% | mic: %.2f%% | mac: %.2f%%' % (val_loss, val_acc*100, val_mic*100, val_mac*100))
 
 
-    def test(self):
-        return
+    def testMany(self):
+        test_lists = self.list_files(self.test_path)
+        val_loss, val_acc, val_mic, val_mac = self.val_epoch(test_lists)
+
+        print('\tVal Loss: %.3f | Val Acc: %.2f%% | mic: %.2f%% | mac: %.2f%%' % (val_loss, val_acc*100, val_mic*100, val_mac*100))
+
+
+    def testOne(self, img_path):
+        self.model.eval()
+
+        input_tensor = torch.tensor(input).cuda()
+        input_tensor = input_tensor.permute(0,3,1,2)
+
+        output = self.model(input_tensor)
+        output = torch.argmax(output, axis=1)
+        output = output.cpu().numpy()
+
+        return output
 
 
 def main():
@@ -200,6 +221,7 @@ if __name__=='__main__':
 
     parser.add_argument('--input_path', type=str, default='')
     parser.add_argument('--label_path', type=str, default='')
+    parser.add_argument('--test_path', type=str, default='')
 
     parser.add_argument('--n_epochs', type=int, default=100)
     parser.add_argument('--batch_num', type=int, default=5)
