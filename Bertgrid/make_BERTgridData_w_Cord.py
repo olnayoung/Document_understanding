@@ -17,22 +17,51 @@ def get_BERTvector(model, input_ids, device):
     return seq_hiddens, pooled
 
 
-def img2BERTgrid(img, input_ids, bboxes, device):
+def img2BERTgrid(img, input_ids, bboxes, model, device):
+    resize = args.resize
     hei, wid, _ = img.shape
-    BERTgrid = np.zeros([hei, wid, 768])
-    return
+    BERTgrid = np.zeros([int(hei/resize), int(wid/resize), 768])
+    seq_hiddens, _ = get_BERTvector(model, input_ids, device)
+
+    for word, bbox in zip(seq_hiddens[0][1:-1], bboxes):
+        word = word.cpu().detach().numpy()
+        # word = word.detach().numpy()
+
+        minX = int(min(bbox[0:4])/resize)
+        maxX = int(max(bbox[0:4])/resize)
+        minY = int(min(bbox[4:])/resize)
+        maxY = int(max(bbox[4:])/resize)
+
+        BERTgrid[minY:maxY+1, minX:maxX+1] = word
+
+    return BERTgrid
 
 
 def label2LABELgrid(img, category_ids, bboxes):
-    return
+    resize = args.resize
+    hei, wid, _ = img.shape
+    LABELgrid = np.zeros([int(hei/resize), int(wid/resize), 1])
+
+    for label, bbox in zip(category_ids, bboxes):
+        minX = int(min(bbox[0:4]))
+        maxX = int(max(bbox[0:4]))
+        minY = int(min(bbox[4:]))
+        maxY = int(max(bbox[4:]))
+
+        LABELgrid[minY:maxY+1, minX:maxX+1] = label
+
+    return LABELgrid
 
 
 class CordDataset(Dataset):
     def __init__(self):
         split = args.split
-        assert split in  ['train', 'dev', 'train']
+        assert split in  ['train', 'dev', 'test']
         self.verbose = args.verbose
         self.data_path = os.path.join(args.data_root, 'CORD', split)
+        if not os.path.isdir(self.data_path):
+            assert 'Please Download data'
+
         self.CORD_CATEGORY_TO_ID = {'menu.nm':1, 'menu.num':2, 'menu.unitprice':3, 'menu.cnt':4, 'menu.discountprice':5, 'menu.price':6,
                                     'menu.itemsubtotal':7, 'menu.vatyn':8, 'menu.etc':9, 'menu.sub_nm':10, 'menu.sub_num':11, 'menu.sub_unitprice':12,
                                     'menu.sub_cnt':13, 'menu.sub_discountprice':14, 'menu.sub_price':15, 'menu.sub_etc':16, 'void_menu.nm':17,
@@ -46,22 +75,29 @@ class CordDataset(Dataset):
         self.img, self.raw_annotation = self._load_data()
         self.annotation, self.label = self._parse_annotations()
         self._post_data_process()
+
     
 
     def _load_data(self):
         image_root = os.path.join(self.data_path, 'image')
         annotation_root = os.path.join(self.data_path, 'json')
-        img_list = os.listdir(image_root).sort()
-        annotation_list = os.listdir(annotation_root).sort()
+        self.img_list = os.listdir(image_root)
+        self.img_list.sort()
+        annotation_list = os.listdir(annotation_root)
+        annotation_list.sort()
 
         if self.verbose:
-            img_list = tqdm(img_list)
+            self.img_list = tqdm(self.img_list)
             annotation_list = tqdm(annotation_list)
         
-        images = [np.array(imageio.imread(os.path.join(image_root, path))) for path in img_list]
+        images = [np.array(imageio.imread(os.path.join(image_root, path))) for path in self.img_list]
         annotations = [json.load(open(os.path.join(annotation_root, path))) for path in annotation_list]
 
         return images, annotations
+
+
+    def getFilelist(self):
+        return self.img_list
 
 
     def _parse_annotations(self):
@@ -131,11 +167,12 @@ class CordDataset(Dataset):
 
 
 class CordBERTGridDataset(CordDataset):
-    def __init__(self, tokenizer, device):
+    def __init__(self, tokenizer, model, device):
         self.tokenizer = tokenizer
+        self.model = model
         self.device = device
         self.return_id = args.return_id
-        super(CordBERTGridDataset, self).__init__(args.data_root, args.split, args.verbose)
+        super(CordBERTGridDataset, self).__init__()
 
 
     def _parse_annotations(self):
@@ -231,8 +268,29 @@ class CordBERTGridDataset(CordDataset):
         category_ids = self.category_ids[idx]
         input_ids = self.input_ids[idx]
 
-        return img, input_ids, bboxes, category_ids
+        BERTgrid = img2BERTgrid(img, input_ids, bboxes, self.model, self.device)
+        LABELgrid = label2LABELgrid(img, category_ids, bboxes)
 
+        return BERTgrid, LABELgrid
+
+
+def saveData(datas, filelist):
+    data_root = args.data_root
+    split = args.split
+
+    path_data = os.path.join(data_root, 'CORD', split, 'BERTgrid')
+    path_label = os.path.join(data_root, 'CORD', split, 'LABELgrid')
+
+    if not os.path.isdir(path_data):
+        os.mkdir(path_data)
+    if not os.path.isdir(path_label):
+        os.mkdir(path_label)
+
+    idx = 0
+    for filename in zip(filelist):
+        np.savez(os.path.join(path_data+'/'+filename[0]), datas[idx][0])
+        np.savez(os.path.join(path_label+'/'+filename[0]), datas[idx][1])
+        idx += 1
 
 
 def main():
@@ -244,13 +302,18 @@ def main():
         model = model.to(device)
         model.eval()
 
+    bert_grid_dataset = CordBERTGridDataset(tokenizer, model, device)
+    filelist = bert_grid_dataset.getFilelist()
+    saveData(bert_grid_dataset, filelist)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--data_root', type=str, default='.')
+    parser.add_argument('--data_root', type=str, default='/home/ny/pytorch_codes/DocumentIntelligence/dataset')
     parser.add_argument('--split', type=str, default='train', help='train, dev, test')
     parser.add_argument('--verbose', type=bool, default=True)
+    parser.add_argument('--resize', type=int, default=6, help='image will be resized into 1/resize')
 
     parser.add_argument('--tokenizer', type=str, default='Bert')
     parser.add_argument('--return_id', type=bool, default=True, help='True: return id / False: return token')
