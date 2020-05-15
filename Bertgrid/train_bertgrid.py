@@ -23,6 +23,8 @@ class trainNetwork():
         self.val_input_path = os.path.join(args.train_path, 'CORD', 'dev', 'BERTgrid')
         self.val_label_path = os.path.join(args.train_path, 'CORD', 'dev', 'LABELgrid')
         self.save_path = os.path.join(args.train_path, 'CORD', 'params')
+        if not os.path.isdir(self.save_path):
+            os.mkdir(self.save_path)
 
         self.l_r = args.l_r
         self.model = NetForBertgrid(768, self.class_num)
@@ -69,12 +71,37 @@ class trainNetwork():
             if idx == 0:
                 inputs = np.expand_dims(img, axis=0)
                 labels = np.expand_dims(label, axis=0)
+
+                _, inputs_h, inputs_w, _ = inputs.shape
+
+                if inputs_h % 8 != 0:
+                    remain = 8 - inputs_h % 8
+                    inputs = np.pad(inputs, ((0, 0), (0, remain), (0, 0), (0, 0)), 'constant')
+                    labels = np.pad(labels, ((0, 0), (0, remain), (0, 0), (0, 0)), 'constant')
+                    
+                if inputs_w % 8 != 0:
+                    remain = 8 - inputs_w % 8
+                    inputs = np.pad(inputs, ((0, 0), (0, 0), (0, remain), (0, 0)), 'constant')
+                    labels = np.pad(labels, ((0, 0), (0, 0), (0, remain), (0, 0)), 'constant')
+
             else:
                 img = np.expand_dims(img, axis=0)
                 label = np.expand_dims(label, axis=0)
 
                 _, img_h, img_w, _ = img.shape
                 _, inputs_h, inputs_w, _ = inputs.shape
+
+                if inputs_h % 8 != 0:
+                    remain = 8 - inputs_h % 8
+                    inputs = np.pad(inputs, ((0, 0), (0, remain), (0, 0), (0, 0)), 'constant') 
+                    labels = np.pad(labels, ((0, 0), (0, remain), (0, 0), (0, 0)), 'constant')
+                    inputs_h += remain
+                    
+                if inputs_w % 8 != 0:
+                    remain = 8 - inputs_w % 8
+                    inputs = np.pad(inputs, ((0, 0), (0, 0), (0, remain), (0, 0)), 'constant')
+                    labels = np.pad(labels, ((0, 0), (0, 0), (0, remain), (0, 0)), 'constant')
+                    inputs_w += remain
 
                 if img_h > inputs_h:
                     inputs = np.pad(inputs, ((0, 0), (0, img_h - inputs_h), (0, 0), (0, 0)), 'constant')
@@ -201,7 +228,7 @@ class trainNetwork():
             val_loss, val_acc, val_mic, val_mac = self.val_epoch(val_input_lists)
             end_time = time.time()
 
-            if past_acc > val_acc or past_mic > val_mic or past_mac > val_mac:
+            if past_acc < val_acc or past_mic < val_mic or past_mac < val_mac:
                 torch.save(self.model.state_dict(), self.save_path + '/' + str(epoch+100) + '.pt')
                 past_acc, past_mic, past_mac = val_acc, val_mic, val_mac
 
@@ -221,11 +248,11 @@ if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--train_path', type=str, default='/home/ny/pytorch_codes/DocumentIntelligence/dataset/')
+    parser.add_argument('--train_path', type=str, default='D:\data')
 
     parser.add_argument('--n_epochs', type=int, default=100)
     parser.add_argument('--batch_num', type=int, default=1)
-    parser.add_argument('--class_num', type=int, default=31)
+    parser.add_argument('--class_num', type=int, default=43)
     parser.add_argument('--l_r', type=float, default=10**(-4))
 
     parser.add_argument('--lossname', type=str, default='CrossEntropy')
@@ -234,4 +261,3 @@ if __name__=='__main__':
 
     args = parser.parse_args()
     main()
- 

@@ -11,7 +11,7 @@ from transformers import BertTokenizer, BertModel
 
 
 def get_BERTvector(model, input_ids, device):
-    input_tensor = torch.tensor(input_ids).unsqueeze(0).to(device)
+    input_tensor = torch.tensor(input_ids, dtype=torch.long).unsqueeze(0).to(device)
     seq_hiddens, pooled = model(input_tensor)
 
     return seq_hiddens, pooled
@@ -299,8 +299,8 @@ def main():
     if args.tokenizer == 'Bert':
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         model = BertModel.from_pretrained('bert-base-uncased')
-        model = model.to(device)
         model.eval()
+        model = model.to(device)
 
     bert_grid_dataset = CordBERTGridDataset(tokenizer, model, device)
     filelist = bert_grid_dataset.getFilelist()
@@ -310,7 +310,7 @@ def main():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--data_root', type=str, default='/home/ny/pytorch_codes/DocumentIntelligence/dataset')
+    parser.add_argument('--data_root', type=str, default='D:\data')
     parser.add_argument('--split', type=str, default='train', help='train, dev, test')
     parser.add_argument('--verbose', type=bool, default=True)
     parser.add_argument('--resize', type=int, default=6, help='image will be resized into 1/resize')
