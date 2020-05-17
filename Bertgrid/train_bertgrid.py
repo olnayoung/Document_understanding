@@ -169,7 +169,7 @@ class trainNetwork():
             loss.backward()
             self.optimizer.step()
 
-            acc = self.calcul_accuracy(output, label_tensor)
+            acc = self.calcul_accuracy(output, label_tensor.long())
 
             epoch_loss += loss.item()
             epoch_acc += acc[0].item()
@@ -205,7 +205,7 @@ class trainNetwork():
             output = self.model(input_tensor)
             loss = self.criterion(output, label_tensor.squeeze(1).long())
 
-            acc = self.calcul_accuracy(output, label_tensor)
+            acc = self.calcul_accuracy(output, label_tensor.long())
 
             epoch_loss += loss.item()
             epoch_acc += acc[0].item()
@@ -248,7 +248,7 @@ if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--train_path', type=str, default='D:\data')
+    parser.add_argument('--train_path', type=str, default='/home/ny/pytorch_codes/DocumentIntelligence/dataset')
 
     parser.add_argument('--n_epochs', type=int, default=100)
     parser.add_argument('--batch_num', type=int, default=1)
